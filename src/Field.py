@@ -4,7 +4,9 @@ Created on 21 paź 2017
 @author: Lama
 '''
 from math import floor
-from cgitb import small
+from itertools import product
+
+
 class SimpleField:
     def __init__(self, base):
         if base < 2:
@@ -215,7 +217,13 @@ class SimpleField:
         return val;
     
     def isZero(self, poly):
-        for i in range(0, poly):
+        for i in range(0, len(poly)):
+            if poly[i] != 0:
+                return False;
+        return True;
+    
+    def equals(self, poly):
+        for i in range(0, len(poly)):
             if poly[i] != 0:
                 return False;
         return True;
@@ -248,7 +256,7 @@ class SimpleField:
                 break;
         
         if biggestDividendPower < biggestDivisorPower:
-            raise "Polynomials are indivisible";
+            return [[0], dividend];
         
         maxPower = max(biggestDividendPower, biggestDivisorPower);
         result = [self.getArray(maxPower), self.getArray(maxPower)];
@@ -282,22 +290,125 @@ class SimpleField:
                 result[1] = newDividend;
                 return result;
             
-    def searchForPrimals(self, ):
+    def getBin(self, number):
+        string = bin(number);
+        string = string[2:];
+        result = self.getArray(len(string));
+        length = len(string);
+        for i in range(0, length):
+            result[i] = int(string[length - 1 - i])
+        return result;
     
-f = SimpleField(29);
+    #unfinished, dont know what to do
+    def findGeneratorPolies(self, maxPower):
+        output = [];
+        factors = [];
+        for i in range(0, self.base):
+            factors.append(i);
+        i = 0;
+        j = 0;
+        for candidatePoly in product(factors, repeat = maxPower + 1):
+            candidatePoly = list(reversed(candidatePoly));
+            #pomijam 0 do n i nx
+            if (i > self.base):
+                divisible = 0;
+                for divisor in product(factors, repeat = maxPower + 1):
+                    divisor = list(reversed(divisor));
+                    #pomijam 0 do n
+                    if (j > self.base - 1 and candidatePoly != divisor):
+                        result = self.divPolynomials(candidatePoly, divisor);
+                        if (self.isZero(result[1])):
+                            divisible = divisible + 1;
+                            break;
+                    j = j + 1;
+                if (divisible is 0):
+                    output.append(candidatePoly);
+            i = i + 1;
+            j = 0;
+        return output;
+    
+    
+    def findGeneratorPoliesGF2(self, maxPower):
+        if maxPower > 63:
+            raise "Too hard for me";
+        maxPower = maxPower + 1;
+        output = [];
+        #Dla każdego wielomianu począwszy od x + 1
+        for candidate in range(3, 2**maxPower):
+            #Sprawdz czy istnieje dzielnik mniejszego stopnia bez reszty
+            candidatePoly = self.getBin(candidate);
+            undivisible = True;
+            #dzielniki począwszy od x
+            for divisor in range(2, 2**(self.getBiggestPower(candidatePoly))):
+                divisor = self.getBin(divisor);
+                result = self.divPolynomials(candidatePoly, divisor);
+                #jezeli reszta jest zerowa to sie dzieli, odrzucamy kandydata
+                if (self.isZero(result[1])):
+                    undivisible = False;
+                    break;
+            if (undivisible):
+                output.append(candidatePoly);
+        return output;
+            
+    def searchForPrimalPoliesGF2(self, power):
+        if self.base != 2:
+            raise "Da się, ale jeszcze nie teraz";
+        generators = self.findGeneratorPoliesGF2(power);
+        result = [];
+        #Elementrem pierwotnym ciała GF(2) jest 1, więc jedynka musi być pierwiastkiem generatora
+        for i in range(0, len(generators) - 1):
+            root = 0;
+            for j in (0, len(generators[i]) - 1):
+                self.add(root, generators[i][j]);
+            if (root == 0):
+                result.append(generators[i]);
+        return result;
+    
+    def extFieldElementsGF2(self, power):
+        generators = self.searchForPrimalPoliesGF2(power);
+        results = [];
+        for i in range(0, 2**power):
+            results.append([]);
+        results[0] = [0];
+        results[1] = [1];
+        #biorę generator inny niż x + 1, bo z niego nic nie wyczaruje
+        generator = [];
+        mainGenerator = [];
+        for i in range(1, len(generators) - 1):
+            gen = generators[i];
+            if (gen[1] != 0):
+                generator = gen;
+                mainGenerator = gen;
+                break;
+        generator[1] = 0;
+        
+        results[2] = generator;
+        for i in range(3, len(results)):
+            results[i] = self.divPolynomials(self.mulPolynomials(results[i - 1], generator), mainGenerator)[1];
+        return results;
+        
+        
+    
+f = SimpleField(2);
 #f.printPolynomial([1, 0, 1]);
 #f.printPolynomial(f.addPolynomials([1, 0, 1], [1, 1, 1]));
 #f.printPolynomial(f.subPolynomials([1, 0, 1], [1, 1, 1]));
-divident = [1, 1, 1, 0, 1];
-divisor = [1, 0, 1, 1];
-result = f.divPolynomials(divident, divisor);
-print(f.polyToString(result[0]));
-print(f.polyToString(result[1]));
+# divident = [1, 0, 1];
+# divisor = [1, 1];
+# result = f.divPolynomials(divident, divisor);
+# print(f.polyToString(result[0]) + "W");
+# print(f.polyToString(result[1]) + "R");
 #f.printPolynomial();
 #f.printPolynomial(f.mulPolynomials([1, 1, 1], f.invPolymonial([1, 1, 1])));
 #f.printPolynomial(f.invPolymonial([1, 1, 0]))
-
-
-
-
-
+gens = f.extFieldElementsGF2(3);
+for g in gens:
+    print(f.polyToString(g));
+#     
+# factors = [];
+# for i in range(0, 5):
+#     factors.append(i);
+# for candidatePoly in product(factors, repeat = len(factors)):
+#     print(candidatePoly);
+    
+    
