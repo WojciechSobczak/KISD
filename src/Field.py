@@ -5,6 +5,7 @@ Created on 21 paź 2017
 '''
 from math import floor
 from itertools import product
+from _ast import If
 
 
 class SimpleField:
@@ -203,13 +204,6 @@ class SimpleField:
                     result[power] = self.add(result[power], factor);
         return result;
 
-    def invPolymonial(self, poly):
-        result = [];
-        if self.base == 2:
-            for i in range(len(poly) - 1, -1, -1):
-                result.append(poly[i]);
-        return result;
-    
     def polyToNumber(self, poly):
         val = 0;
         for i in range(0, len(poly)):
@@ -255,13 +249,13 @@ class SimpleField:
                 biggestDivisorPower = i;
                 break;
         
-        if biggestDividendPower < biggestDivisorPower:
+        if biggestDividendPower < biggestDivisorPower or (biggestDividendPower >= 1 and biggestDivisorPower == 0):
             return [[0], dividend];
         
         maxPower = max(biggestDividendPower, biggestDivisorPower);
         result = [self.getArray(maxPower), self.getArray(maxPower)];
         remainder = result[1];
-        newDividend = dividend;
+        newDividend = list(dividend);
         while True:
             i = len(newDividend) - 1;
             while (newDividend[i] == 0 and i > 0):
@@ -305,36 +299,54 @@ class SimpleField:
         factors = [];
         for i in range(0, self.base):
             factors.append(i);
-        i = 0;
-        j = 0;
-        for candidatePoly in product(factors, repeat = maxPower + 1):
-            candidatePoly = list(reversed(candidatePoly));
-            #pomijam 0 do n i nx
-            if (i > self.base):
-                divisible = 0;
-                for divisor in product(factors, repeat = maxPower + 1):
-                    divisor = list(reversed(divisor));
-                    #pomijam 0 do n
-                    if (j > self.base - 1 and candidatePoly != divisor):
+        
+        if (maxPower <= 0):
+            return [];
+        
+        polyIter = product(factors, repeat = maxPower);
+        polyIter.__next__(); #0
+        
+        try:
+            while True:
+                candidatePoly = list(reversed(polyIter.__next__()));
+                candidatePoly.append(1);
+                divisorIter = product(factors, repeat = maxPower);
+                divisorIter.__next__(); #0
+                divisorIter.__next__(); #1
+                try:
+                    divisible = False;
+                    while True:
+                        divisor = list(reversed(divisorIter.__next__()));
                         result = self.divPolynomials(candidatePoly, divisor);
                         if (self.isZero(result[1])):
-                            divisible = divisible + 1;
+                            divisible = True;
                             break;
-                    j = j + 1;
-                if (divisible is 0):
-                    output.append(candidatePoly);
-            i = i + 1;
-            j = 0;
+                    if (divisible == False):
+                        output.append(candidatePoly);
+                    divisible = False;
+                except Exception as e:
+                    if (divisible == False):
+                        output.append(candidatePoly);
+                    print(e)
+                    pass;
+        except Exception as e:
+            print(e)
+            pass;
+        
         return output;
     
+    def invPolymonialGF2(self, poly):
+        result = [];
+        for i in range(len(poly) - 1, -1, -1):
+            result.append(poly[i]);
+        return result;
     
     def findGeneratorPoliesGF2(self, maxPower):
         if maxPower > 63:
             raise "Too hard for me";
-        maxPower = maxPower + 1;
         output = [];
         #Dla każdego wielomianu począwszy od x + 1
-        for candidate in range(3, 2**maxPower):
+        for candidate in range(2**maxPower, 2**(maxPower + 1)):
             #Sprawdz czy istnieje dzielnik mniejszego stopnia bez reszty
             candidatePoly = self.getBin(candidate);
             undivisible = True;
@@ -349,47 +361,64 @@ class SimpleField:
             if (undivisible):
                 output.append(candidatePoly);
         return output;
+    
+    def generateSequence(self, mainPoly, power):
+        poly = list(mainPoly);
+        sequenceStart = self.getArray(power);
+        sequenceStart[power - 1] = 1;
+        
+        sequence = list(sequenceStart);
+        poly[self.getBiggestPower(poly)] = 0;
+        indiciesOfRecursion = [];
+        for i in range(0, len(poly)):
+            if poly[i] != 0:
+                indiciesOfRecursion.append(i);
+        offset = power - 1;
+        while True:
+            elemOfSeq = 0;
+            for i in range(0, len(indiciesOfRecursion)):
+                elemOfSeq = self.add(elemOfSeq, sequence[offset - indiciesOfRecursion[i]]);
+            sequence.append(elemOfSeq);
+            actualHead = [];
+            for i in range(0, len(sequenceStart)):
+                actualHead.insert(0, sequence[offset + 1 - i]);
+            #Od samego początku, do początku ostatniego okna
+            for i in range(0, len(sequence) - len(sequenceStart)):
+                #i to indeks offsetu, więc budujemy okno
+                window = sequence[i:i+len(sequenceStart)];
+                #Dla każdego okna w sekwencji, od offsetu do końca
+                for j in range(i + 1, len(sequence) - len(sequenceStart) + 1):
+                    checkWindow = sequence[j:j+len(sequenceStart)];
+                    if (checkWindow == window):
+                        for k in range(0, len(sequenceStart)):
+                            sequence.pop();
+                        return sequence;
+            offset = offset + 1;
             
     def searchForPrimalPoliesGF2(self, power):
-        if self.base != 2:
-            raise "Da się, ale jeszcze nie teraz";
         generators = self.findGeneratorPoliesGF2(power);
         result = [];
-        #Elementrem pierwotnym ciała GF(2) jest 1, więc jedynka musi być pierwiastkiem generatora
-        for i in range(0, len(generators) - 1):
-            root = 0;
-            for j in (0, len(generators[i]) - 1):
-                self.add(root, generators[i][j]);
-            if (root == 0):
+        for i in range(0, len(generators)):
+            if (len(self.generateSequence(generators[i], power)) == (2**power) - 1):
                 result.append(generators[i]);
         return result;
     
     def extFieldElementsGF2(self, power):
-        generators = self.searchForPrimalPoliesGF2(power);
+        generator = self.searchForPrimalPoliesGF2(power)[0];
         results = [];
         for i in range(0, 2**power):
             results.append([]);
         results[0] = [0];
-        results[1] = [1];
-        #biorę generator inny niż x + 1, bo z niego nic nie wyczaruje
-        generator = [];
-        mainGenerator = [];
-        for i in range(1, len(generators) - 1):
-            gen = generators[i];
-            if (gen[1] != 0):
-                generator = gen;
-                mainGenerator = gen;
-                break;
-        generator[1] = 0;
-        
-        results[2] = generator;
-        for i in range(3, len(results)):
-            results[i] = self.divPolynomials(self.mulPolynomials(results[i - 1], generator), mainGenerator)[1];
+        sequence = self.generateSequence(generator, power);
+        for i in range(1, len(results)):
+            window = self.getArray(power);
+            for j in range(0, power):
+                window[j] = sequence[((i - 1) + j) % (2**power - 1)];
+            results[i] = window;
         return results;
         
-        
     
-f = SimpleField(2);
+f = SimpleField(3);
 #f.printPolynomial([1, 0, 1]);
 #f.printPolynomial(f.addPolynomials([1, 0, 1], [1, 1, 1]));
 #f.printPolynomial(f.subPolynomials([1, 0, 1], [1, 1, 1]));
@@ -401,7 +430,7 @@ f = SimpleField(2);
 #f.printPolynomial();
 #f.printPolynomial(f.mulPolynomials([1, 1, 1], f.invPolymonial([1, 1, 1])));
 #f.printPolynomial(f.invPolymonial([1, 1, 0]))
-gens = f.extFieldElementsGF2(3);
+gens = f.findGeneratorPolies(3);
 for g in gens:
     print(f.polyToString(g));
 #     
