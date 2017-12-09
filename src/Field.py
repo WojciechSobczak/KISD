@@ -327,10 +327,8 @@ class SimpleField:
                 except Exception as e:
                     if (divisible == False):
                         output.append(candidatePoly);
-                    print(e)
                     pass;
         except Exception as e:
-            print(e)
             pass;
         
         return output;
@@ -341,39 +339,19 @@ class SimpleField:
             result.append(poly[i]);
         return result;
     
-    def findGeneratorPoliesGF2(self, maxPower):
-        if maxPower > 63:
-            raise "Too hard for me";
-        output = [];
-        #Dla każdego wielomianu począwszy od x + 1
-        for candidate in range(2**maxPower, 2**(maxPower + 1)):
-            #Sprawdz czy istnieje dzielnik mniejszego stopnia bez reszty
-            candidatePoly = self.getBin(candidate);
-            undivisible = True;
-            #dzielniki począwszy od x
-            for divisor in range(2, 2**(self.getBiggestPower(candidatePoly))):
-                divisor = self.getBin(divisor);
-                result = self.divPolynomials(candidatePoly, divisor);
-                #jezeli reszta jest zerowa to sie dzieli, odrzucamy kandydata
-                if (self.isZero(result[1])):
-                    undivisible = False;
-                    break;
-            if (undivisible):
-                output.append(candidatePoly);
-        return output;
-    
-    def generateSequence(self, mainPoly, power):
+    def generateSequence(self, mainPoly):
         poly = list(mainPoly);
-        sequenceStart = self.getArray(power);
-        sequenceStart[power - 1] = 1;
-        
-        sequence = list(sequenceStart);
         poly[self.getBiggestPower(poly)] = 0;
         indiciesOfRecursion = [];
         for i in range(0, len(poly)):
             if poly[i] != 0:
                 indiciesOfRecursion.append(i);
-        offset = power - 1;
+        indiciesLength = len(indiciesOfRecursion);
+        sequenceStart = self.getArray(indiciesLength);
+        sequenceStart[indiciesLength - 1] = 1;
+        sequence = list(sequenceStart);        
+                
+        offset = indiciesLength - 1;
         while True:
             elemOfSeq = 0;
             for i in range(0, len(indiciesOfRecursion)):
@@ -382,24 +360,17 @@ class SimpleField:
             actualHead = [];
             for i in range(0, len(sequenceStart)):
                 actualHead.insert(0, sequence[offset + 1 - i]);
-            #Od samego początku, do początku ostatniego okna
-            for i in range(0, len(sequence) - len(sequenceStart)):
-                #i to indeks offsetu, więc budujemy okno
-                window = sequence[i:i+len(sequenceStart)];
-                #Dla każdego okna w sekwencji, od offsetu do końca
-                for j in range(i + 1, len(sequence) - len(sequenceStart) + 1):
-                    checkWindow = sequence[j:j+len(sequenceStart)];
-                    if (checkWindow == window):
-                        for k in range(0, len(sequenceStart)):
-                            sequence.pop();
-                        return sequence;
+            if (sequenceStart == actualHead):
+                for i in sequenceStart:
+                    sequence.pop();
+                return sequence;  
             offset = offset + 1;
             
-    def searchForPrimalPoliesGF2(self, power):
-        generators = self.findGeneratorPoliesGF2(power);
+    def searchForPrimalPolies(self, power):
+        generators = self.findGeneratorPolies(power);
         result = [];
         for i in range(0, len(generators)):
-            if (len(self.generateSequence(generators[i], power)) == (2**power) - 1):
+            if (len(self.generateSequence(generators[i])) == (self.base**power) - 1):
                 result.append(generators[i]);
         return result;
     
@@ -418,7 +389,7 @@ class SimpleField:
         return results;
         
     
-f = SimpleField(3);
+f = SimpleField(2);
 #f.printPolynomial([1, 0, 1]);
 #f.printPolynomial(f.addPolynomials([1, 0, 1], [1, 1, 1]));
 #f.printPolynomial(f.subPolynomials([1, 0, 1], [1, 1, 1]));
@@ -430,7 +401,7 @@ f = SimpleField(3);
 #f.printPolynomial();
 #f.printPolynomial(f.mulPolynomials([1, 1, 1], f.invPolymonial([1, 1, 1])));
 #f.printPolynomial(f.invPolymonial([1, 1, 0]))
-gens = f.findGeneratorPolies(3);
+gens = f.findGeneratorPolies(4);
 for g in gens:
     print(f.polyToString(g));
 #     
