@@ -5,8 +5,6 @@ Created on 21 paź 2017
 '''
 from math import floor
 from itertools import product
-from _ast import If
-
 
 class SimpleField:
     def __init__(self, base):
