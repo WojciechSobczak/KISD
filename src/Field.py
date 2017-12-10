@@ -347,24 +347,21 @@ class SimpleField:
             if poly[i] != 0:
                 indiciesOfRecursion.append(i);
         indiciesLength = len(indiciesOfRecursion);
-        sequenceStart = self.getArray(indiciesLength);
-        sequenceStart[indiciesLength - 1] = 1;
+        sequenceStart = self.getArray(indiciesOfRecursion[indiciesLength - 1] + 1);
+        sequenceStart[len(sequenceStart) - 1] = 1;
         sequence = list(sequenceStart);        
-                
-        offset = indiciesLength - 1;
         while True:
             elemOfSeq = 0;
             for i in range(0, len(indiciesOfRecursion)):
-                elemOfSeq = self.add(elemOfSeq, sequence[offset - indiciesOfRecursion[i]]);
+                elemOfSeq = self.add(elemOfSeq, sequence[len(sequence) - 1 - indiciesOfRecursion[i]]);
             sequence.append(elemOfSeq);
             actualHead = [];
             for i in range(0, len(sequenceStart)):
-                actualHead.insert(0, sequence[offset + 1 - i]);
+                actualHead.insert(0, sequence[len(sequence) - 1 - i]);
             if (sequenceStart == actualHead):
                 for i in sequenceStart:
                     sequence.pop();
                 return sequence;  
-            offset = offset + 1;
             
     def searchForPrimalPolies(self, power):
         generators = self.findGeneratorPolies(power);
@@ -374,17 +371,17 @@ class SimpleField:
                 result.append(generators[i]);
         return result;
     
-    def extFieldElementsGF2(self, power):
-        generator = self.searchForPrimalPoliesGF2(power)[0];
+    def extFieldElements(self, power):
+        generator = self.searchForPrimalPolies(power)[0];
         results = [];
-        for i in range(0, 2**power):
+        for i in range(0, self.base**power):
             results.append([]);
         results[0] = [0];
-        sequence = self.generateSequence(generator, power);
+        sequence = self.generateSequence(generator);
         for i in range(1, len(results)):
             window = self.getArray(power);
             for j in range(0, power):
-                window[j] = sequence[((i - 1) + j) % (2**power - 1)];
+                window[j] = sequence[((i - 1) + j) % (self.base**power - 1)];
             results[i] = window;
         return results;
         
@@ -401,7 +398,7 @@ f = SimpleField(2);
 #f.printPolynomial();
 #f.printPolynomial(f.mulPolynomials([1, 1, 1], f.invPolymonial([1, 1, 1])));
 #f.printPolynomial(f.invPolymonial([1, 1, 0]))
-gens = f.findGeneratorPolies(4);
+gens = f.extFieldElements(3);
 for g in gens:
     print(f.polyToString(g));
 #     
