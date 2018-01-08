@@ -5,13 +5,15 @@ Created on 21 paź 2017
 '''
 from math import floor
 from itertools import product
+import copy;
+from operator import inv
 
-class SimpleField:
+class Field:
     def __init__(self, base):
         if base < 2:
             raise "Base of field has to be bigger than 2!"
-        if self.isPrime(base) == False:
-            raise "Base of field has to be prime number!";
+#         if self.isPrime(base) == False:
+#             raise "Base of field has to be prime number!";
         self.base = base;
     
     #Operations
@@ -248,7 +250,7 @@ class SimpleField:
                 break;
         
         if biggestDividendPower < biggestDivisorPower or (biggestDividendPower >= 1 and biggestDivisorPower == 0):
-            return [[0], dividend];
+            return [[0], copy.copy(dividend)];
         
         maxPower = max(biggestDividendPower, biggestDivisorPower);
         result = [self.getArray(maxPower), self.getArray(maxPower)];
@@ -291,8 +293,7 @@ class SimpleField:
             result[i] = int(string[length - 1 - i])
         return result;
     
-    #unfinished, dont know what to do
-    def findGeneratorPolies(self, maxPower):
+    def _findGeneratorPolies(self, maxPower, getFirst):
         output = [];
         factors = [];
         for i in range(0, self.base):
@@ -320,6 +321,8 @@ class SimpleField:
                             divisible = True;
                             break;
                     if (divisible == False):
+                        if (getFirst == True):
+                            return candidatePoly;
                         output.append(candidatePoly);
                     divisible = False;
                 except Exception as e:
@@ -331,6 +334,12 @@ class SimpleField:
         
         return output;
     
+    def findGeneratorPolies(self, maxPower):
+        return self._findGeneratorPolies(maxPower, False);
+    
+    def findFirstGeneratorPoly(self, maxPower):
+        return self._findGeneratorPolies(maxPower, True);
+    
     def invPolymonialGF2(self, poly):
         result = [];
         for i in range(len(poly) - 1, -1, -1):
@@ -339,19 +348,19 @@ class SimpleField:
     
     def generateSequence(self, mainPoly):
         poly = list(mainPoly);
-        poly[self.getBiggestPower(poly)] = 0;
+        biggestPower = self.getBiggestPower(poly);
+        poly[biggestPower] = 0;
         indiciesOfRecursion = [];
         for i in range(0, len(poly)):
             if poly[i] != 0:
                 indiciesOfRecursion.append(i);
-        indiciesLength = len(indiciesOfRecursion);
-        sequenceStart = self.getArray(indiciesOfRecursion[indiciesLength - 1] + 1);
-        sequenceStart[len(sequenceStart) - 1] = 1;
+        sequenceStart = self.getArray(biggestPower);
+        sequenceStart[biggestPower - 1] = 1;
         sequence = list(sequenceStart);        
         while True:
             elemOfSeq = 0;
             for i in range(0, len(indiciesOfRecursion)):
-                elemOfSeq = self.add(elemOfSeq, sequence[len(sequence) - 1 - indiciesOfRecursion[i]]);
+                elemOfSeq = self.add(elemOfSeq, sequence[(len(sequence) - len(sequenceStart)) + indiciesOfRecursion[i]]);
             sequence.append(elemOfSeq);
             actualHead = [];
             for i in range(0, len(sequenceStart)):
@@ -361,16 +370,24 @@ class SimpleField:
                     sequence.pop();
                 return sequence;  
             
-    def searchForPrimalPolies(self, power):
+    def _searchForPrimalPolies(self, power, firstOnly):
         generators = self.findGeneratorPolies(power);
         result = [];
         for i in range(0, len(generators)):
             if (len(self.generateSequence(generators[i])) == (self.base**power) - 1):
+                if (firstOnly == True):
+                    return generators[i];
                 result.append(generators[i]);
         return result;
     
+    def searchForPrimalPolies(self, power):
+        return self._searchForPrimalPolies(power, False);
+    
+    def searchForPrimalPoly(self, power):
+        return self._searchForPrimalPolies(power, True);
+    
     def extFieldElements(self, power):
-        generator = self.searchForPrimalPolies(power)[0];
+        generator = self.searchForPrimalPoly(power);
         results = [];
         for i in range(0, self.base**power):
             results.append([]);
@@ -380,11 +397,12 @@ class SimpleField:
             window = self.getArray(power);
             for j in range(0, power):
                 window[j] = sequence[((i - 1) + j) % (self.base**power - 1)];
+            list.reverse(window);
             results[i] = window;
         return results;
         
     
-f = SimpleField(2);
+f = Field(2);
 #f.printPolynomial([1, 0, 1]);
 #f.printPolynomial(f.addPolynomials([1, 0, 1], [1, 1, 1]));
 #f.printPolynomial(f.subPolynomials([1, 0, 1], [1, 1, 1]));
@@ -396,9 +414,9 @@ f = SimpleField(2);
 #f.printPolynomial();
 #f.printPolynomial(f.mulPolynomials([1, 1, 1], f.invPolymonial([1, 1, 1])));
 #f.printPolynomial(f.invPolymonial([1, 1, 0]))
-gens = f.extFieldElements(3);
-for g in gens:
-    print(f.polyToString(g));
+# gens = f.extFieldElements(4);
+# for g in gens:
+#     print(f.polyToString(g));
 #     
 # factors = [];
 # for i in range(0, 5):
