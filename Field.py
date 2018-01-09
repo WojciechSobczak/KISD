@@ -6,14 +6,13 @@ Created on 21 paź 2017
 from math import floor
 from itertools import product
 import copy;
-from operator import inv
 
 class Field:
     def __init__(self, base):
         if base < 2:
             raise "Base of field has to be bigger than 2!"
-#         if self.isPrime(base) == False:
-#             raise "Base of field has to be prime number!";
+        if self.isPrime(base) == False:
+            raise "Base of field has to be prime number!";
         self.base = base;
     
     #Operations
@@ -22,12 +21,13 @@ class Field:
         val = 0;
         for p in params:
             if p < 0:
-                p = self.addInv(p);
+                p = self.getInv(p);
             val += p;
         return val % self.base;
     def sub(self, elem1, elem2):
-        return self.add(elem1, self.addInv(elem2));
-    def addInv(self, num):
+        return self.add(elem1, self.getInv(elem2));
+    
+    def getInv(self, num):
         if num < 0:
             return self.base + num;
         else:
@@ -65,6 +65,8 @@ class Field:
             if (len(generatedNumbers) == self.base - 1):
                 outputList.append(currentBase);
         return outputList;
+    
+    
     def isPrime(self, number):
         number = abs(number);
         if number == 1:
@@ -75,12 +77,16 @@ class Field:
             if number % i == 0:
                 return False;
         return True;
+    
+    
     def naiveMulInverse(self, num):
         if num <= 0 or num > self.base or self.fastGcd(num, self.base) != 1:
             raise "Number has not inversed element"
         for i in range(2, self.base):
             if self.mul(num, i) == 1:
                 return i;
+            
+            
     def gcd(self, num1, num2):
         while (num1 != num2):
             if (num1 > num2):
@@ -88,6 +94,8 @@ class Field:
             else:
                 num2 -= num1;
         return num1;
+    
+    
     def fastGcd(self, num1, num2):
         while num1 != num2:
             result = max(num1, num2);
@@ -102,7 +110,7 @@ class Field:
     #Based on Bézout coefficients taken from Extended Euclidean Algorithm
     def fastMulInverse(self, num):
         if num < 0:
-            num = self.addInv(num);
+            num = self.getInv(num);
         if num == 0 or num > self.base or self.fastGcd(num, self.base) != 1:
             raise "Number has not inversed element"
         a = num;
@@ -384,7 +392,8 @@ class Field:
         return self._searchForPrimalPolies(power, False);
     
     def searchForPrimalPoly(self, power):
-        return self._searchForPrimalPolies(power, True);
+        return [1,1,0,0,1];
+        #return self._searchForPrimalPolies(power, True);
     
     def extFieldElements(self, power):
         generator = self.searchForPrimalPoly(power);
@@ -400,15 +409,15 @@ class Field:
             list.reverse(window);
             results[i] = window;
         return results;
-        
+    
     
 f = Field(2);
 #f.printPolynomial([1, 0, 1]);
 #f.printPolynomial(f.addPolynomials([1, 0, 1], [1, 1, 1]));
 #f.printPolynomial(f.subPolynomials([1, 0, 1], [1, 1, 1]));
-# divident = [1, 0, 1];
-# divisor = [1, 1];
-# result = f.divPolynomials(divident, divisor);
+divident = [1, 0, 1];
+divisor = [1, 1];
+result = f.divPolynomials(divident, divisor);
 # print(f.polyToString(result[0]) + "W");
 # print(f.polyToString(result[1]) + "R");
 #f.printPolynomial();
