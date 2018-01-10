@@ -1,5 +1,6 @@
 from ExtExtField import ExtExtField
 import copy;
+from galois.galois import GF
 
 class ReedSolomon:
     
@@ -15,6 +16,9 @@ class ReedSolomon:
         self.k = self.n - errorsToCorrect * 2;
         self.bitsPerSymbol = bitsPerSymbol;
         self.errorsToCorrect = errorsToCorrect;
+        
+        #self.field = GF(2**self.bit)
+        
         self.extField = ExtExtField(2, bitsPerSymbol);
         self.generator = self.findGenerator();
             
@@ -76,15 +80,13 @@ class ReedSolomon:
         
         #Dzielenie przez generator przesuniętego wielomianu
         divResult = self.extField.divExtPolynomials(message, self.generator);
-        print(divResult);
        # print(list(reversed(message)))
        # print(list(reversed(self.generator)))
-      #  print(self.extField.mulPolynomials(self.generator, divResult[0]));
+       # print(self.extField.mulPolynomials(self.generator, divResult[0]));
         
         r = divResult[1];
         #Dodanie reszty do wiadomości, koniec kodowania
-        message = self.extField.addPolynomials(message, r);
-        print(message);
+        message = self.extField.addExtPolynomials(message, r);
         return message;
     
     def simpleDecode(self, message):
@@ -93,7 +95,9 @@ class ReedSolomon:
     def checkCode(self):
         code = rs.code(list(reversed([1,  2,  3,  4,  5,  6,  7,  8,  9,  10,  11])));
         res = self.extField.divExtPolynomials(code, self.generator);
+        print(code);
         print(res);
+        print(self.extField.addExtPolynomials(self.extField.mulExtPolynomials(res[0], self.generator), res[1]));
 
     
 

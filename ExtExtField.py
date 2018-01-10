@@ -96,7 +96,6 @@ class ExtExtField(Field.Field):
         return output;
     
     def getElemToPower(self, elem):
-        print(elem);
         return self.elemToPower[self.hash(elem)];
         
     def addExt(self, elem1, elem2):
@@ -111,9 +110,26 @@ class ExtExtField(Field.Field):
     
     def subExt(self, elem1, elem2):
         return self.addExt(elem1, self.getExtInv(elem2));
+    
+    def divExt(self, elem1, elem2):
+        if (self.isZero(elem1) or self.isZero(elem2)):
+            return [0];
+        alpha1 = self.getElemToPower(elem1);
+        alpha2 = self.getElemToPower(elem2);
+        alpha = (alpha1 - alpha2);
+        if (alpha < 0):
+            alpha = alpha + (self.base**self.power - 2);
+        return self.elements[(alpha + 1) % self.base**self.power];
+    
     def getExtInv(self, elem):
         for i in range(0, len(elem)):
             elem[i] = self.getInv(elem[i]);
+            
+    def getExtPolynomialInv(self, elem):
+        for i in range(0, len(elem)):
+            for j in range(0, len(elem[i])):
+                elem[i][j] = self.getInv(elem[i][j]);
+            
          
     def addExtPolynomials(self, poly1, poly2):
         bigSmall = self.getBiggerAndSmallerPoly(poly1, poly2);
@@ -127,6 +143,9 @@ class ExtExtField(Field.Field):
             output.append([0]);
         return output;
     
+    def subExtPolynomials(self, elem1, elem2):
+        return self.addExtPolynomials(elem1, elem2);
+            
     
     def mulExtPolynomials(self, poly1, poly2):
         maxPower1 = 0;
@@ -158,6 +177,21 @@ class ExtExtField(Field.Field):
                 return i;
         return 0;
     
+    def reduceExtPolynomialsZeros(self, inpoly):
+        poly = copy.copy(inpoly);
+        toRem = 0;
+        for i in range(len(poly) - 1, -1, -1):
+            if (self.isZero(poly[i]) == True):
+                toRem = toRem + 1;
+            else:
+                break;
+        if (toRem == len(poly)):
+            return [[0]];
+        else:
+            for i in range(0, toRem):
+                del poly[len(poly) - 1];
+        return poly;
+        
     def divExtPolynomials(self, dividend, divisor):
         #Znalezienie najwyższej potęgi dzielnej
         biggestDividendPower = 0;
@@ -180,34 +214,40 @@ class ExtExtField(Field.Field):
         result = [self.getExtArray(maxPower), self.getExtArray(maxPower)];
         remainder = result[1];
         newDividend = list(dividend);
-        while True:
-            i = len(newDividend) - 1;
-            while (self.isZero(newDividend[i]) and i > 0):
-                i = i - 1;
-            if i < 0:
-                return result;
-            #dzielenie przez najwyższą potęgę dzielnej
-            actualPower = i - biggestDivisorPower;
-            #jeżeli mniejsza niż zero, to już nie podzielimy, więc koniec dzielenia
-            if actualPower < 0:
-                if i == 0:
-                    return [dividend, remainder];
-                else:
-                    return result;
-            #Dzielimy aktualny największy wyraz dzielnej przez największy wyraz dzielnika
-            divResult = self.getExtArray(actualPower + 1);
-            divResult[actualPower] = self.divPolynomials(newDividend[i], divisor[biggestDivisorPower]);
-            #Dodajemy wynik tego dzielenia do wyniku
-            result[0] = self.addExtPolynomials(result[0], divResult);
-            #Mnożenie dzielnika przez wynik dzielenia
-            subtrahend = self.mulExtPolynomials(divisor, divResult);
-            #Odejmowanie wymnożonej wartości od aktualnej dzielnej
-            newDividend = self.subExtPolynomials(newDividend, subtrahend);
-            #Jeżeli można dzielić dalej, to dzielimy, jeżeli nie to koniec dzielenia i zwracamy wynik
-            if self.getExtBiggestPower(newDividend) < biggestDivisorPower:
-                result[1] = newDividend;
-                return result;
-            
+        try:
+            while True:
+                i = len(newDividend) - 1;
+                while (self.isZero(newDividend[i]) and i > 0):
+                    i = i - 1;
+                if i < 0:
+                    raise StopIteration;
+                #dzielenie przez najwyższą potęgę dzielnej
+                actualPower = i - biggestDivisorPower;
+                #jeżeli mniejsza niż zero, to już nie podzielimy, więc koniec dzielenia
+                if actualPower < 0:
+                    if i == 0:
+                        result[0] = dividend;
+                        result[1] = remainder;
+                        raise StopIteration;
+                    else:
+                        raise StopIteration;
+                #Dzielimy aktualny największy wyraz dzielnej przez największy wyraz dzielnika
+                divResult = self.getExtArray(actualPower + 1);
+                divResult[actualPower] = self.divExt(newDividend[i], divisor[biggestDivisorPower]);
+                #Dodajemy wynik tego dzielenia do wyniku
+                result[0] = self.addExtPolynomials(result[0], divResult);
+                #Mnożenie dzielnika przez wynik dzielenia
+                subtrahend = self.mulExtPolynomials(divisor, divResult);
+                #Odejmowanie wymnożonej wartości od aktualnej dzielnej
+                newDividend = self.subExtPolynomials(newDividend, subtrahend);
+                #Jeżeli można dzielić dalej, to dzielimy, jeżeli nie to koniec dzielenia i zwracamy wynik
+                if self.getExtBiggestPower(newDividend) < biggestDivisorPower:
+                    result[1] = newDividend;
+                    raise StopIteration;
+        except StopIteration:
+            result[0] = self.reduceExtPolynomialsZeros(result[0]);
+            result[1] = self.reduceExtPolynomialsZeros(result[1]);
+        return result;
     
     
     
