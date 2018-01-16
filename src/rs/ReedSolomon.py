@@ -1,6 +1,6 @@
 from ExtExtField import ExtExtField
 import copy;
-from galois.galois import GF
+from galois import *;
 
 class ReedSolomon:
     
@@ -21,6 +21,16 @@ class ReedSolomon:
         
         self.extField = ExtExtField(2, bitsPerSymbol);
         self.generator = self.findGenerator();
+        self.mod = self.n + 1;
+        print("----------------------------------------------------")
+        print("RS Coder/Decoder 2**" + str(self.bitsPerSymbol) + ":")
+        print(" - n = " + str(self.n));
+        print(" - k = " + str(self.k));
+        print(" - n - k = " + str(self.n - self.k));
+        print(" - t = " + str(self.errorsToCorrect));
+        print(" - g = " + str(self.generator));
+        print("----------------------------------------------------")
+        print();        
             
         
         
@@ -28,6 +38,15 @@ class ReedSolomon:
         output = 0;
         for i in range(0, len(binVec)):
             output = output + binVec[i] * 2**i;
+        return output;
+    
+    def extPolyToDecVec(self, poly):
+        output = self.extField.getArray(len(poly));
+        for i in range(0, len(poly)):
+            if (self.extField.isZero(poly[i])):
+                output[i] = 0;
+            else:
+                output[i] = self.binToDec(poly[i]);
         return output;
     
     def decToPoly(self, dec):
@@ -80,24 +99,81 @@ class ReedSolomon:
         
         #Dzielenie przez generator przesuniętego wielomianu
         divResult = self.extField.divExtPolynomials(message, self.generator);
-       # print(list(reversed(message)))
-       # print(list(reversed(self.generator)))
-       # print(self.extField.mulPolynomials(self.generator, divResult[0]));
         
         r = divResult[1];
         #Dodanie reszty do wiadomości, koniec kodowania
         message = self.extField.addExtPolynomials(message, r);
+        print(self.extPolyToDecVec(message));
         return message;
     
-    def simpleDecode(self, message):
-        return message;
+    
+    def weightOfExtPoly(self, poly):
+        weight = 0;
+        for i in range(0, len(poly)):
+            if self.extField.isZero(poly[i]) == False:
+                weight += 1;
+        return weight;
+    
+    def shiftExtPolyRight(self, poly, times):
+        result = self.extField.getExtArray(len(poly));
+        times %= len(poly);
+        for i in range(len(result)):
+            result[i] = poly[(i + times) % len(poly)];
+        return result;
+    
+    def shiftExtPolyLeft(self, poly, times):
+        result = self.extField.getExtArray(len(poly));
+        times %= len(poly);
+        for i in range(len(result)):
+            newPosition = i - times;
+            if (newPosition < 0):
+                newPosition += len(poly);
+            result[newPosition] = poly[i];
+        return result;
+    
+    def simpleDecode(self, messagePoly):
+        correctedPoly = copy.copy(messagePoly);
+        shifts = 0;
+        while True:
+            divResu = self.extField.divExtPolynomials(correctedPoly, self.generator);
+            print(self.extPolyToDecVec(self.extField.addExtPolynomials(self.extField.mulExtPolynomials(divResu[0], self.generator), divResu[1])));
+            syndrom = divResu[1];
+            weight = self.weightOfExtPoly(syndrom);
+            if (self.extField.isZeroExtPolynomial(syndrom)):
+                return correctedPoly;
+            #jeżeli waga większa niż zdolność to sprawdzamy czy jest szansa na korekcję
+            if (weight > self.errorsToCorrect):
+                if (shifts == self.k):
+                    #nic się nie da zrobić :(
+                    raise "Non correctable error!";
+                else:
+                    shifts += 1;
+                    correctedPoly = self.shiftExtPolyLeft(correctedPoly, 1);
+            else:
+                #da radę skorygować
+                correctedPoly = self.extField.addExtPolynomials(correctedPoly, syndrom);
+                #przesunięcie w kierunku części korekcyjnej
+                correctedPoly = self.shiftExtPolyRight(correctedPoly, shifts);
+        
     
     def checkCode(self):
-        code = rs.code(list(reversed([1,  2,  3,  4,  5,  6,  7,  8,  9,  10,  11])));
-        res = self.extField.divExtPolynomials(code, self.generator);
-        print(code);
-        print(res);
-        print(self.extField.addExtPolynomials(self.extField.mulExtPolynomials(res[0], self.generator), res[1]));
+        message = list(reversed([1,  2,  3,  4,  5,  6,  7,  8,  9,  10,  11]));#, 12, 13]));
+        code = rs.code(message);
+        print("Original: " + str(self.extPolyToDecVec(code)));
+        
+        for i in range(0, len(code)):
+            corruptedCode = copy.copy(code);
+            corruptedCode[i] = [0, 0, 0, 0];
+            print ("    Uszkodzony: " + str(self.extPolyToDecVec(corruptedCode)));
+            try:
+                decoded = self.simpleDecode(corruptedCode);
+                print ("    Odkodowany: " + str(self.extPolyToDecVec(decoded)));
+            except:
+                print("    Błąd na pozycji (" + str(i) + ") niekorygowalny.");
+                pass;
+            print("-------------------------------")
+        
+       
 
     
 

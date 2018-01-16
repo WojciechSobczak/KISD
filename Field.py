@@ -28,10 +28,12 @@ class Field:
         return self.add(elem1, self.getInv(elem2));
     
     def getInv(self, num):
-        if num < 0:
+        if (num < 0):
             return self.base + num;
-        else:
+        elif (num > 0):
             return self.base - num;
+        else:
+            return 0;
        
     def pow(self, base, power):
         if power == 0:
@@ -392,8 +394,7 @@ class Field:
         return self._searchForPrimalPolies(power, False);
     
     def searchForPrimalPoly(self, power):
-        return [1,1,0,0,1];
-        #return self._searchForPrimalPolies(power, True);
+        return self._searchForPrimalPolies(power, True);
     
     def extFieldElements(self, power):
         generator = self.searchForPrimalPoly(power);

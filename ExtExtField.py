@@ -122,20 +122,24 @@ class ExtExtField(Field.Field):
         return self.elements[(alpha + 1) % self.base**self.power];
     
     def getExtInv(self, elem):
+        output = copy.copy(elem);
         for i in range(0, len(elem)):
-            elem[i] = self.getInv(elem[i]);
+            output[i] = self.getInv(output[i]);
+        return output;
             
     def getExtPolynomialInv(self, elem):
-        for i in range(0, len(elem)):
-            for j in range(0, len(elem[i])):
-                elem[i][j] = self.getInv(elem[i][j]);
+        output = copy.copy(elem);
+        for i in range(0, len(output)):
+            for j in range(0, len(output[i])):
+                output[i][j] = self.getInv(output[i][j]);
+        return output;
             
          
     def addExtPolynomials(self, poly1, poly2):
         bigSmall = self.getBiggerAndSmallerPoly(poly1, poly2);
         for i in range(0, len(bigSmall[1])):
             bigSmall[0][i] = self.addPolynomials(bigSmall[0][i], bigSmall[1][i]);
-        return bigSmall[0];
+        return self.reduceExtPolynomialsZeros(bigSmall[0]);
     
     def getExtArray(self, length):
         output = [];
@@ -144,8 +148,13 @@ class ExtExtField(Field.Field):
         return output;
     
     def subExtPolynomials(self, elem1, elem2):
-        return self.addExtPolynomials(elem1, elem2);
-            
+        return self.addExtPolynomials(elem1, self.getExtPolynomialInv(elem2));
+      
+    def isZeroExtPolynomial(self, poly):
+        for i in range(0, len(poly)):
+            if (self.isZero(poly[i]) == False):
+                return False;      
+        return True;
     
     def mulExtPolynomials(self, poly1, poly2):
         maxPower1 = 0;
@@ -169,6 +178,7 @@ class ExtExtField(Field.Field):
                 factor = self.mulExt(poly1[i], poly2[j]);
                 power = i + j;
                 result[power] = self.addExt(result[power], factor);
+        result = self.reduceExtPolynomialsZeros(result);
         return result;
     
     def getExtBiggestPower(self, poly):
@@ -208,7 +218,7 @@ class ExtExtField(Field.Field):
                 break;
         
         if biggestDividendPower < biggestDivisorPower or (biggestDividendPower >= 1 and biggestDivisorPower == 0):
-            return [[[0]], copy.copy(dividend)];
+            return [[[0]],  self.reduceExtPolynomialsZeros(copy.copy(dividend))];
         
         maxPower = max(biggestDividendPower, biggestDivisorPower);
         result = [self.getExtArray(maxPower), self.getExtArray(maxPower)];
@@ -247,6 +257,7 @@ class ExtExtField(Field.Field):
         except StopIteration:
             result[0] = self.reduceExtPolynomialsZeros(result[0]);
             result[1] = self.reduceExtPolynomialsZeros(result[1]);
+            pass;
         return result;
     
     

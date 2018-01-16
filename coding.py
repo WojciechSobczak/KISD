@@ -2,7 +2,7 @@ import random
 import math
 import operator
 import copy
-from galois.galois import *
+from galois import *
 
 class Matrix:
     def __init__(self, rows=1, cols=1, data=[], fill=None):
